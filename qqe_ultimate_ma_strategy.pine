@@ -129,23 +129,57 @@ qqeSell = qqeRed and qqeHist < 0
 
 // =============================================================================
 //  2) ULTIMATE MOVING AVERAGE
-//     A smoothed adaptive MA that is GREEN when rising and RED when falling.
+//     Faithful port of ChrisMoody's "CM_Ultimate_MA_MTF" (the "Ultimate Moving
+//     Average" indicator on TradingView): 8 selectable MA types, multi-timeframe
+//     option, and green/red coloring based on direction over a smoothing window.
 // =============================================================================
-grpUMA = "Ultimate Moving Average"
-umaLen  = input.int(20, "Ultimate MA Length", minval = 1, group = grpUMA)
-umaType = input.string("HMA", "Ultimate MA Type", options = ["EMA", "SMA", "WMA", "RMA", "HMA"], group = grpUMA)
+grpUMA = "Ultimate Moving Average (CM_Ultimate_MA_MTF)"
+umaCurrentRes = input.bool(true, "Ultimate MA: use current chart resolution", group = grpUMA)
+umaResCustom  = input.timeframe("D", "Ultimate MA: custom timeframe (if unchecked)", group = grpUMA)
+umaLen   = input.int(20, "Ultimate MA Length (lookback)", minval = 1, group = grpUMA)
+umaType  = input.int(1, "1=SMA 2=EMA 3=WMA 4=HullMA 5=VWMA 6=RMA 7=TEMA 8=Tilson T3", minval = 1, maxval = 8, group = grpUMA)
+umaSmooth = input.int(2, "Color Smoothing (1 = no smoothing)", minval = 1, maxval = 10, group = grpUMA)
+umaCC    = input.bool(true, "Change color based on direction", group = grpUMA)
+t3Factor = input.float(7, "Tilson T3 Factor (7 = traditional 0.7)", minval = 0, maxval = 20, group = grpUMA) * 0.1
 
-f_ma(_src, _len, _type) =>
-    _type == "EMA" ? ta.ema(_src, _len) :
-     _type == "SMA" ? ta.sma(_src, _len) :
-     _type == "WMA" ? ta.wma(_src, _len) :
-     _type == "RMA" ? ta.rma(_src, _len) :
-     ta.hma(_src, _len)
+umaSrc = srcClose
 
-uma = f_ma(srcClose, umaLen, umaType)
+// --- Building blocks for the 8 MA variants -----------------------------------
+hullma = ta.wma(2 * ta.wma(umaSrc, math.round(umaLen / 2)) - ta.wma(umaSrc, umaLen), math.round(math.sqrt(umaLen)))
 
-umaBull = uma > uma[1]                       // Ultimate MA turned green (rising)
-umaBear = uma < uma[1]                       // Ultimate MA turned red (falling)
+e1 = ta.ema(umaSrc, umaLen)
+e2 = ta.ema(e1, umaLen)
+e3 = ta.ema(e2, umaLen)
+tema = 3 * (e1 - e2) + e3
+
+// Tilson T3
+xe1 = ta.ema(umaSrc, umaLen)
+xe2 = ta.ema(xe1, umaLen)
+xe3 = ta.ema(xe2, umaLen)
+xe4 = ta.ema(xe3, umaLen)
+xe5 = ta.ema(xe4, umaLen)
+xe6 = ta.ema(xe5, umaLen)
+tb = t3Factor
+tc1 = -tb * tb * tb
+tc2 = 3 * tb * tb + 3 * tb * tb * tb
+tc3 = -6 * tb * tb - 3 * tb - 3 * tb * tb * tb
+tc4 = 1 + 3 * tb + tb * tb * tb + 3 * tb * tb
+t3 = tc1 * xe6 + tc2 * xe5 + tc3 * xe4 + tc4 * xe3
+
+umaVariant = umaType == 1 ? ta.sma(umaSrc, umaLen) :
+     umaType == 2 ? ta.ema(umaSrc, umaLen) :
+     umaType == 3 ? ta.wma(umaSrc, umaLen) :
+     umaType == 4 ? hullma :
+     umaType == 5 ? ta.vwma(umaSrc, umaLen) :
+     umaType == 6 ? ta.rma(umaSrc, umaLen) :
+     umaType == 7 ? tema :
+     t3
+
+uma = umaCurrentRes ? umaVariant : request.security(syminfo.tickerid, umaResCustom, umaVariant, barmerge.gaps_off, barmerge.lookahead_off)
+
+umaBull = uma > uma[umaSmooth]               // Ultimate MA is GREEN  (rising)
+umaBear = uma < uma[umaSmooth]               // Ultimate MA is RED    (falling)
+umaColor = not umaCC ? color.new(#0585ff, 0) : umaBull ? color.new(color.lime, 0) : umaBear ? color.new(color.red, 0) : color.new(color.yellow, 0)
 
 // General uptrend filter (price above a long EMA)
 trendEma = ta.ema(srcClose, trendLen)
@@ -168,7 +202,7 @@ if sellSignal and strategy.position_size > 0
 // =============================================================================
 //  4) VISUALS
 // =============================================================================
-plot(uma, "Ultimate MA", color = umaBull ? color.new(color.lime, 0) : color.new(color.red, 0), linewidth = 2)
+plot(uma, "Ultimate MA", color = umaColor, linewidth = 2)
 plot(useTrend ? trendEma : na, "Uptrend EMA", color = color.new(color.gray, 40), linewidth = 1)
 
 plotshape(buySignal and strategy.position_size <= 0,  title = "Buy",  style = shape.labelup,   location = location.belowbar, color = color.new(color.green, 0), text = "BUY",  textcolor = color.white, size = size.small)

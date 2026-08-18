@@ -8,8 +8,10 @@ A [TradingView](https://www.tradingview.com/) Pine Script **v6** strategy that c
 
 ## 📊 المؤشرات المستخدمة / Indicators used
 
-- **QQE Mod** – نسخة مطوّرة من مؤشر QQE تعرض هيستوجرام (أعمدة) يتحول للأخضر/الأحمر حول خط الأساس الأبيض (الصفر).
-- **Ultimate Moving Average** – متوسط متحرك متكيّف يتحول للأخضر عند الصعود وللأحمر عند الهبوط.
+- **QQE Mod** – نفس مؤشر QQE Mod القياسي (نسخة Mihkel00) الموجود على TradingView: هيستوجرام (أعمدة) يتحول للأخضر/الأحمر حول خط الأساس الأبيض (الصفر).
+- **Ultimate Moving Average** – نفس مؤشر **`CM_Ultimate_MA_MTF`** (ChrisMoody) الموجود على TradingView: متوسط متحرك بـ 8 أنواع (SMA, EMA, WMA, HullMA, VWMA, RMA, TEMA, Tilson T3) يتحول للأخضر عند الصعود وللأحمر عند الهبوط، مع دعم الإطارات المتعددة (MTF).
+
+> السكربت يعيد بناء **نفس المؤشرَين الأصليَّين** المنشورَين على TradingView داخل ملف واحد، لتطابق الإشارات ما تراه على المنصة.
 
 Both indicators are re-implemented **inside a single script**, so you only need to add one item to your chart.
 
@@ -56,7 +58,9 @@ The script opens a long only when **all** of these are true on the same bar.
 | Require general uptrend for Buy | on | اشتراط اتجاه صاعد عام قبل الشراء |
 | Uptrend EMA length | 200 | طول المتوسط المستخدم لفلتر الاتجاه |
 | QQE Mod parameters | Mihkel00 defaults | إعدادات مؤشر QQE Mod القياسية |
-| Ultimate MA Length / Type | 20 / HMA | طول ونوع المتوسط المتحرك النهائي |
+| Ultimate MA Length | 20 | طول المتوسط المتحرك النهائي |
+| Ultimate MA Type | 1 (SMA) | نوع المتوسط: 1=SMA 2=EMA 3=WMA 4=HullMA 5=VWMA 6=RMA 7=TEMA 8=T3 |
+| Color Smoothing | 2 | عدد الشموع لتحديد اتجاه اللون (1 = بدون تنعيم) |
 
 ---
 
