@@ -267,3 +267,53 @@ bgcolor(qqeGreen ? color.new(color.green, 92) : qqeRed ? color.new(color.red, 92
 // =============================================================================
 alertcondition(buySignal,  title = "Buy Signal",  message = "QQE+UMA BUY: QQE green above 0 and Ultimate MA green")
 alertcondition(sellSignal, title = "Sell Signal", message = "QQE+UMA SELL: QQE red below 0")
+
+// =============================================================================
+//  6) DASHBOARD  (on-chart status + performance stats)
+// =============================================================================
+grpDash = "Dashboard"
+showDash = input.bool(true, "Show dashboard", group = grpDash)
+dashPos  = input.string("Top Right", "Position", options = ["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group = grpDash)
+
+f_tablePos(_p) =>
+    _p == "Top Right" ? position.top_right :
+     _p == "Top Left" ? position.top_left :
+     _p == "Bottom Right" ? position.bottom_right :
+     position.bottom_left
+
+colUp   = color.new(color.green, 0)
+colDown = color.new(color.red, 0)
+colFlat = color.new(color.gray, 0)
+
+var table dash = table.new(f_tablePos(dashPos), 2, 8, border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
+
+if showDash and barstate.islast
+    netP    = strategy.netprofit
+    totTr   = strategy.closedtrades
+    wins    = strategy.wintrades
+    winRate = totTr > 0 ? wins / totTr * 100.0 : 0.0
+    posTxt  = strategy.position_size > 0 ? "LONG" : "FLAT"
+
+    table.cell(dash, 0, 0, "QQE + Ultimate MA", text_color = color.white, bgcolor = color.new(color.blue, 0), text_size = size.small)
+    table.cell(dash, 1, 0, timeframe.period + (useHA ? " • HA" : ""), text_color = color.white, bgcolor = color.new(color.blue, 0), text_size = size.small)
+
+    table.cell(dash, 0, 1, "QQE Mod", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 1, qqeGreen ? "GREEN ▲" : qqeRed ? "RED ▼" : "NEUTRAL", text_color = color.white, bgcolor = qqeGreen ? colUp : qqeRed ? colDown : colFlat, text_size = size.small)
+
+    table.cell(dash, 0, 2, "Ultimate MA", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 2, umaBull ? "GREEN ▲" : umaBear ? "RED ▼" : "FLAT", text_color = color.white, bgcolor = umaBull ? colUp : umaBear ? colDown : colFlat, text_size = size.small)
+
+    table.cell(dash, 0, 3, "Trend (EMA " + str.tostring(trendLen) + ")", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 3, uptrend ? "UP ▲" : "DOWN ▼", text_color = color.white, bgcolor = uptrend ? colUp : colDown, text_size = size.small)
+
+    table.cell(dash, 0, 4, "Position", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 4, posTxt, text_color = color.white, bgcolor = strategy.position_size > 0 ? colUp : colFlat, text_size = size.small)
+
+    table.cell(dash, 0, 5, "Net Profit", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 5, str.tostring(netP, "#.##"), text_color = color.white, bgcolor = netP >= 0 ? colUp : colDown, text_size = size.small)
+
+    table.cell(dash, 0, 6, "Win Rate", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 6, str.tostring(winRate, "#.#") + "%", text_color = color.white, bgcolor = color.new(color.gray, 20), text_size = size.small)
+
+    table.cell(dash, 0, 7, "Trades", text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 7, str.tostring(totTr), text_color = color.white, bgcolor = color.new(color.gray, 20), text_size = size.small)
