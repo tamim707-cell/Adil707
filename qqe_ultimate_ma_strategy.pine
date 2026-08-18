@@ -193,9 +193,38 @@ tfOk = not restrict1h or timeframe.period == "60"
 buySignal  = qqeBuy and umaBull and (not useTrend or uptrend) and tfOk
 sellSignal = qqeSell
 
+// --- Risk management: Stop Loss / Take Profit --------------------------------
+grpRisk = "Risk / إدارة المخاطر"
+useSLTP  = input.bool(true, "Enable Stop Loss / Take Profit", group = grpRisk)
+slMode   = input.string("ATR", "Stop / Target mode", options = ["ATR", "Percent"], group = grpRisk)
+atrLen   = input.int(14, "ATR Length", minval = 1, group = grpRisk)
+slAtrMult = input.float(2.0, "Stop Loss = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
+tpAtrMult = input.float(4.0, "Take Profit = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
+slPerc   = input.float(2.0, "Stop Loss %",   minval = 0.1, step = 0.1, group = grpRisk)
+tpPerc   = input.float(4.0, "Take Profit %", minval = 0.1, step = 0.1, group = grpRisk)
+
+atr = ta.atr(atrLen)
+
+// Entry
 if buySignal and strategy.position_size <= 0
     strategy.entry("Long", strategy.long)
 
+// Stop Loss / Take Profit levels, computed from the average entry price
+var float longSL = na
+var float longTP = na
+if strategy.position_size > 0
+    stopDist   = slMode == "ATR" ? atr * slAtrMult : strategy.position_avg_price * slPerc / 100.0
+    targetDist = slMode == "ATR" ? atr * tpAtrMult : strategy.position_avg_price * tpPerc / 100.0
+    longSL := strategy.position_avg_price - stopDist
+    longTP := strategy.position_avg_price + targetDist
+else
+    longSL := na
+    longTP := na
+
+if useSLTP and strategy.position_size > 0
+    strategy.exit("Exit", from_entry = "Long", stop = longSL, limit = longTP, comment = "SL/TP")
+
+// QQE-based exit (signal exit) — closes the position regardless of SL/TP
 if sellSignal and strategy.position_size > 0
     strategy.close("Long", comment = "QQE Sell")
 
@@ -204,6 +233,8 @@ if sellSignal and strategy.position_size > 0
 // =============================================================================
 plot(uma, "Ultimate MA", color = umaColor, linewidth = 2)
 plot(useTrend ? trendEma : na, "Uptrend EMA", color = color.new(color.gray, 40), linewidth = 1)
+plot(useSLTP and strategy.position_size > 0 ? longSL : na, "Stop Loss",   color = color.new(color.red, 0),   style = plot.style_linebr, linewidth = 1)
+plot(useSLTP and strategy.position_size > 0 ? longTP : na, "Take Profit", color = color.new(color.green, 0), style = plot.style_linebr, linewidth = 1)
 
 plotshape(buySignal and strategy.position_size <= 0,  title = "Buy",  style = shape.labelup,   location = location.belowbar, color = color.new(color.green, 0), text = "BUY",  textcolor = color.white, size = size.small)
 plotshape(sellSignal and strategy.position_size > 0, title = "Sell", style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0),   text = "SELL", textcolor = color.white, size = size.small)

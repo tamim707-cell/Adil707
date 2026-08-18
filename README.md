@@ -39,13 +39,29 @@ The script opens a long only when **all** of these are true on the same bar.
 
 ---
 
+## 📁 الملفات / Files
+
+| الملف | النوع | الوصف |
+|-------|------|-------|
+| [`qqe_ultimate_ma_strategy.pine`](./qqe_ultimate_ma_strategy.pine) | **Strategy** | ينفّذ صفقات تلقائية مع **وقف خسارة / جني أرباح** ويظهر في **Strategy Tester** |
+| [`qqe_ultimate_ma_indicator.pine`](./qqe_ultimate_ma_indicator.pine) | **Indicator** | يعرض إشارات شراء/بيع وتنبيهات فقط **بدون تنفيذ صفقات** |
+
 ## ⚙️ طريقة الإضافة / How to install
 
 1. افتح TradingView → **Pine Editor** (المحرّر في أسفل الشاشة).
-2. انسخ محتوى الملف [`qqe_ultimate_ma_strategy.pine`](./qqe_ultimate_ma_strategy.pine) والصقه.
+2. انسخ محتوى الملف الذي تريده (الاستراتيجية أو المؤشر) والصقه.
 3. اضغط **Add to chart / إضافة إلى الرسم البياني**.
 4. اضبط الإطار الزمني على **1h** وفعّل هايكن آشي إن أردت.
-5. (اختياري) افتح تبويب **Strategy Tester** لمراجعة النتائج التاريخية (Backtest).
+5. (للاستراتيجية) افتح تبويب **Strategy Tester** لمراجعة النتائج التاريخية (Backtest).
+
+## 🎯 وقف الخسارة وجني الأرباح / Stop Loss & Take Profit (في الاستراتيجية)
+
+يدعم السكربت وضعين لحساب الوقف والهدف:
+
+- **ATR** (افتراضي): الوقف = ATR × 2، الهدف = ATR × 4 (قابلة للتعديل).
+- **Percent**: الوقف = 2%، الهدف = 4% من سعر الدخول.
+
+بالإضافة إلى ذلك، تُغلق الصفقة تلقائياً عند ظهور إشارة بيع QQE (أيهما أسبق). يمكن تعطيل الوقف/الهدف بالكامل من خيار `Enable Stop Loss / Take Profit`.
 
 ---
 
