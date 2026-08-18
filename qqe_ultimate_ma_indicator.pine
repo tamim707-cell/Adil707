@@ -166,8 +166,16 @@ plotshape(buySignal,  title = "Buy",  style = shape.labelup,   location = locati
 plotshape(sellSignal, title = "Sell", style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0),   text = "SELL", textcolor = color.white, size = size.small)
 bgcolor(qqeGreen ? color.new(color.green, 92) : qqeRed ? color.new(color.red, 92) : na, title = "QQE State")
 
+// Human-readable alerts
 alertcondition(buySignal,  title = "Buy Signal",  message = "QQE+UMA BUY: QQE green above 0 and Ultimate MA green")
 alertcondition(sellSignal, title = "Sell Signal", message = "QQE+UMA SELL: QQE red below 0")
-alert_msg = buySignal ? "BUY" : sellSignal ? "SELL" : na
-if not na(alert_msg)
-    alert("QQE+UMA " + alert_msg + " on " + syminfo.ticker, alert.freq_once_per_bar_close)
+
+// Webhook-ready JSON alerts (for automated trading / bots)
+alertcondition(buySignal,  title = "Buy Webhook (JSON)",  message = '{"action":"buy","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}')
+alertcondition(sellSignal, title = "Sell Webhook (JSON)", message = '{"action":"sell","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}')
+
+// alert() calls — fire on bar close with a JSON payload
+if buySignal
+    alert('{"action":"buy","symbol":"' + syminfo.ticker + '","price":"' + str.tostring(close) + '"}', alert.freq_once_per_bar_close)
+if sellSignal
+    alert('{"action":"sell","symbol":"' + syminfo.ticker + '","price":"' + str.tostring(close) + '"}', alert.freq_once_per_bar_close)

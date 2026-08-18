@@ -63,6 +63,28 @@ The script opens a long only when **all** of these are true on the same bar.
 
 بالإضافة إلى ذلك، تُغلق الصفقة تلقائياً عند ظهور إشارة بيع QQE (أيهما أسبق). يمكن تعطيل الوقف/الهدف بالكامل من خيار `Enable Stop Loss / Take Profit`.
 
+### 🔻 الوقف المتحرك / Trailing Stop
+
+فعّل `Enable Trailing Stop` لتفعيل وقف متحرك يتبع السعر:
+- `Trail activation = ATR x` — مقدار الربح (بمضاعفات ATR) قبل أن يبدأ الوقف المتحرك بالعمل.
+- `Trail distance = ATR x` — المسافة التي يتبع بها الوقف السعر (بمضاعفات ATR).
+
+يمكن استخدام الوقف الثابت والمتحرك معاً؛ يُنفَّذ أيهما يُلمَس أولاً.
+
+## 🔔 التنبيهات و Webhook للتداول الآلي / Alerts & Webhook
+
+كلا الملفين يوفّران تنبيهات جاهزة للربط مع **Webhook** (بوتات التداول الآلي) بصيغة **JSON**:
+
+```json
+{"action":"buy","symbol":"{{ticker}}","price":"{{close}}"}
+{"action":"sell","symbol":"{{ticker}}","price":"{{close}}"}
+```
+
+- **في المؤشر**: اختر شرط التنبيه `Buy Webhook (JSON)` أو `Sell Webhook (JSON)` عند إنشاء تنبيه، أو استخدم تنبيه `alert()` التلقائي عند إغلاق الشمعة.
+- **في الاستراتيجية**: عدّل نص رسالة JSON من مجموعة `Alerts / Webhook`، ثم أنشئ تنبيهاً من نوع **"Order fills and alert() function calls"** لإرسال الرسالة إلى الـ Webhook تلقائياً عند تنفيذ الصفقات.
+
+خطوات إنشاء التنبيه: زر **Alert (⏰)** → اختر المؤشر/الاستراتيجية كـ Condition → ضع رابط الـ Webhook في تبويب **Notifications → Webhook URL**.
+
 ---
 
 ## 🔧 الإعدادات / Inputs

@@ -203,11 +203,25 @@ tpAtrMult = input.float(4.0, "Take Profit = ATR x", minval = 0.1, step = 0.1, gr
 slPerc   = input.float(2.0, "Stop Loss %",   minval = 0.1, step = 0.1, group = grpRisk)
 tpPerc   = input.float(4.0, "Take Profit %", minval = 0.1, step = 0.1, group = grpRisk)
 
+// --- Trailing Stop -----------------------------------------------------------
+useTrail    = input.bool(false, "Enable Trailing Stop (وقف متحرك)", group = grpRisk)
+trailActAtr = input.float(1.0, "Trail activation = ATR x", minval = 0.0, step = 0.1, group = grpRisk,
+     tooltip = "Profit distance (in ATR multiples) before the trailing stop activates.")
+trailOffAtr = input.float(2.0, "Trail distance = ATR x", minval = 0.1, step = 0.1, group = grpRisk,
+     tooltip = "How far the trailing stop follows price, in ATR multiples.")
+
+// --- Webhook alert messages (JSON for automated trading) ---------------------
+grpAlerts = "Alerts / Webhook"
+buyMsg  = input.text_area('{"action":"buy","symbol":"{{ticker}}","price":"{{close}}"}',  "Buy webhook message (JSON)",  group = grpAlerts)
+sellMsg = input.text_area('{"action":"sell","symbol":"{{ticker}}","price":"{{close}}"}', "Sell webhook message (JSON)", group = grpAlerts)
+
 atr = ta.atr(atrLen)
+trailActPrice = strategy.position_avg_price + atr * trailActAtr
+trailOffTicks = math.max(1.0, atr * trailOffAtr / syminfo.mintick)
 
 // Entry
 if buySignal and strategy.position_size <= 0
-    strategy.entry("Long", strategy.long)
+    strategy.entry("Long", strategy.long, alert_message = buyMsg)
 
 // Stop Loss / Take Profit levels, computed from the average entry price
 var float longSL = na
@@ -221,12 +235,18 @@ else
     longSL := na
     longTP := na
 
-if useSLTP and strategy.position_size > 0
-    strategy.exit("Exit", from_entry = "Long", stop = longSL, limit = longTP, comment = "SL/TP")
+if strategy.position_size > 0 and (useSLTP or useTrail)
+    strategy.exit("Exit", from_entry = "Long",
+         stop        = useSLTP ? longSL : na,
+         limit       = useSLTP ? longTP : na,
+         trail_price = useTrail ? trailActPrice : na,
+         trail_offset = useTrail ? trailOffTicks : na,
+         comment     = "SL/TP/Trail",
+         alert_message = sellMsg)
 
 // QQE-based exit (signal exit) — closes the position regardless of SL/TP
 if sellSignal and strategy.position_size > 0
-    strategy.close("Long", comment = "QQE Sell")
+    strategy.close("Long", comment = "QQE Sell", alert_message = sellMsg)
 
 // =============================================================================
 //  4) VISUALS
