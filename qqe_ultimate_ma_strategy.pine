@@ -1,0 +1,184 @@
+//@version=6
+// =============================================================================
+//  QQE Mod + Ultimate Moving Average Strategy
+//  استراتيجية QQE Mod مع Ultimate Moving Average
+// -----------------------------------------------------------------------------
+//  Buy  (شراء)  : QQE Mod histogram turns GREEN and closes ABOVE the white 0 line
+//                 AND the Ultimate Moving Average turns GREEN
+//                 (optionally confirmed by a general uptrend filter).
+//  Sell (بيع)   : QQE Mod histogram turns RED and closes BELOW the white 0 line.
+//
+//  Profit Booster (سر تعزيز الأرباح):
+//    - Use Heikin Ashi candles (toggle "Use Heikin Ashi" below).
+//    - Trade the 1 hour (1h) timeframe exclusively.
+// =============================================================================
+strategy(title              = "QQE Mod + Ultimate MA Strategy",
+         shorttitle         = "QQE+UMA",
+         overlay            = true,
+         initial_capital    = 1000,
+         default_qty_type   = strategy.percent_of_equity,
+         default_qty_value  = 100,
+         commission_type    = strategy.commission.percent,
+         commission_value   = 0.04,
+         calc_on_every_tick = false,
+         process_orders_on_close = true)
+
+// =============================================================================
+//  0) GENERAL SETTINGS
+// =============================================================================
+grpGen   = "General / عام"
+useHA     = input.bool(true,  "Use Heikin Ashi source (شموع هايكن آشي)", group = grpGen,
+     tooltip = "Compute all signals on Heikin Ashi values. Recommended by the strategy.")
+restrict1h = input.bool(false, "Restrict entries to 1H timeframe only", group = grpGen,
+     tooltip = "When enabled, new entries are only allowed while the chart timeframe is 1 hour.")
+useTrend  = input.bool(true,  "Require general uptrend for Buy (اتجاه صاعد)", group = grpGen)
+trendLen  = input.int(200, "Uptrend EMA length", minval = 1, group = grpGen)
+
+// --- Source selection: Heikin Ashi or regular candles ------------------------
+haTicker = ticker.heikinashi(syminfo.tickerid)
+haOpen   = request.security(haTicker, timeframe.period, open,  barmerge.gaps_off, barmerge.lookahead_off)
+haHigh   = request.security(haTicker, timeframe.period, high,  barmerge.gaps_off, barmerge.lookahead_off)
+haLow    = request.security(haTicker, timeframe.period, low,   barmerge.gaps_off, barmerge.lookahead_off)
+haClose  = request.security(haTicker, timeframe.period, close, barmerge.gaps_off, barmerge.lookahead_off)
+
+srcClose = useHA ? haClose : close
+
+// =============================================================================
+//  1) QQE MOD  (based on the well-known Mihkel00 "QQE MOD" indicator)
+// =============================================================================
+grpQQE = "QQE Mod"
+// --- First QQE ---
+rsiPeriod = input.int(6,  "RSI Length",        group = grpQQE)
+sf        = input.int(5,  "RSI Smoothing",     group = grpQQE)
+qqeFactor = input.float(3.0, "Fast QQE Factor", group = grpQQE)
+threshHold = input.int(3, "Thresh-hold",       group = grpQQE)
+
+wildersPeriod = rsiPeriod * 2 - 1
+
+rsi   = ta.rsi(srcClose, rsiPeriod)
+rsiMa = ta.ema(rsi, sf)
+atrRsi   = math.abs(rsiMa[1] - rsiMa)
+maAtrRsi = ta.ema(atrRsi, wildersPeriod)
+dar      = ta.ema(maAtrRsi, wildersPeriod) * qqeFactor
+
+var float longband  = 0.0
+var float shortband = 0.0
+var int   trend     = 0
+
+deltaFastAtrRsi = dar
+rsIndex     = rsiMa
+newshortband = rsIndex + deltaFastAtrRsi
+newlongband  = rsIndex - deltaFastAtrRsi
+longband  := rsIndex[1] > longband[1]  and rsIndex > longband[1]  ? math.max(longband[1], newlongband)  : newlongband
+shortband := rsIndex[1] < shortband[1] and rsIndex < shortband[1] ? math.min(shortband[1], newshortband) : newshortband
+cross1 = ta.cross(longband[1], rsIndex)
+trend := ta.cross(rsIndex, shortband[1]) ? 1 : cross1 ? -1 : nz(trend[1], 1)
+fastAtrRsiTL = trend == 1 ? longband : shortband
+
+// --- Second QQE ---
+rsiPeriod2 = input.int(6,  "RSI Length 2",        group = grpQQE)
+sf2        = input.int(5,  "RSI Smoothing 2",     group = grpQQE)
+qqeFactor2 = input.float(1.61, "Fast QQE Factor 2", group = grpQQE)
+threshHold2 = input.int(3, "Thresh-hold 2",       group = grpQQE)
+
+wildersPeriod2 = rsiPeriod2 * 2 - 1
+
+rsi2   = ta.rsi(srcClose, rsiPeriod2)
+rsiMa2 = ta.ema(rsi2, sf2)
+atrRsi2   = math.abs(rsiMa2[1] - rsiMa2)
+maAtrRsi2 = ta.ema(atrRsi2, wildersPeriod2)
+dar2      = ta.ema(maAtrRsi2, wildersPeriod2) * qqeFactor2
+
+var float longband2  = 0.0
+var float shortband2 = 0.0
+var int   trend2     = 0
+
+deltaFastAtrRsi2 = dar2
+rsIndex2     = rsiMa2
+newshortband2 = rsIndex2 + deltaFastAtrRsi2
+newlongband2  = rsIndex2 - deltaFastAtrRsi2
+longband2  := rsIndex2[1] > longband2[1]  and rsIndex2 > longband2[1]  ? math.max(longband2[1], newlongband2)  : newlongband2
+shortband2 := rsIndex2[1] < shortband2[1] and rsIndex2 < shortband2[1] ? math.min(shortband2[1], newshortband2) : newshortband2
+cross2 = ta.cross(longband2[1], rsIndex2)
+trend2 := ta.cross(rsIndex2, shortband2[1]) ? 1 : cross2 ? -1 : nz(trend2[1], 1)
+fastAtrRsi2TL = trend2 == 1 ? longband2 : shortband2
+
+// --- Bollinger bands on the QQE line (the "channel") -------------------------
+bbLength = input.int(50, "Bollinger Length", minval = 1, group = grpQQE)
+bbMult   = input.float(0.35, "BB Multiplier", minval = 0.001, maxval = 5, step = 0.1, group = grpQQE)
+basis = ta.sma(fastAtrRsi2TL - 50, bbLength)
+dev   = bbMult * ta.stdev(fastAtrRsi2TL - 50, bbLength)
+upper = basis + dev
+lower = basis - dev
+
+// --- The QQE Mod histogram (value plotted around the white 0 line) -----------
+qqeHist = rsiMa2 - 50
+
+greenBar1 = rsiMa2 - 50 > threshHold2
+greenBar2 = rsiMa  - 50 > upper
+redBar1   = rsiMa2 - 50 < 0 - threshHold2
+redBar2   = rsiMa  - 50 < lower
+
+qqeGreen = greenBar1 and greenBar2          // histogram turned green
+qqeRed   = redBar1   and redBar2            // histogram turned red
+
+// QQE buy trigger: green AND above the white 0 baseline
+qqeBuy  = qqeGreen and qqeHist > 0
+// QQE sell trigger: red AND below the white 0 baseline
+qqeSell = qqeRed and qqeHist < 0
+
+// =============================================================================
+//  2) ULTIMATE MOVING AVERAGE
+//     A smoothed adaptive MA that is GREEN when rising and RED when falling.
+// =============================================================================
+grpUMA = "Ultimate Moving Average"
+umaLen  = input.int(20, "Ultimate MA Length", minval = 1, group = grpUMA)
+umaType = input.string("HMA", "Ultimate MA Type", options = ["EMA", "SMA", "WMA", "RMA", "HMA"], group = grpUMA)
+
+f_ma(_src, _len, _type) =>
+    _type == "EMA" ? ta.ema(_src, _len) :
+     _type == "SMA" ? ta.sma(_src, _len) :
+     _type == "WMA" ? ta.wma(_src, _len) :
+     _type == "RMA" ? ta.rma(_src, _len) :
+     ta.hma(_src, _len)
+
+uma = f_ma(srcClose, umaLen, umaType)
+
+umaBull = uma > uma[1]                       // Ultimate MA turned green (rising)
+umaBear = uma < uma[1]                       // Ultimate MA turned red (falling)
+
+// General uptrend filter (price above a long EMA)
+trendEma = ta.ema(srcClose, trendLen)
+uptrend  = srcClose > trendEma
+
+// =============================================================================
+//  3) STRATEGY LOGIC
+// =============================================================================
+tfOk = not restrict1h or timeframe.period == "60"
+
+buySignal  = qqeBuy and umaBull and (not useTrend or uptrend) and tfOk
+sellSignal = qqeSell
+
+if buySignal and strategy.position_size <= 0
+    strategy.entry("Long", strategy.long)
+
+if sellSignal and strategy.position_size > 0
+    strategy.close("Long", comment = "QQE Sell")
+
+// =============================================================================
+//  4) VISUALS
+// =============================================================================
+plot(uma, "Ultimate MA", color = umaBull ? color.new(color.lime, 0) : color.new(color.red, 0), linewidth = 2)
+plot(useTrend ? trendEma : na, "Uptrend EMA", color = color.new(color.gray, 40), linewidth = 1)
+
+plotshape(buySignal and strategy.position_size <= 0,  title = "Buy",  style = shape.labelup,   location = location.belowbar, color = color.new(color.green, 0), text = "BUY",  textcolor = color.white, size = size.small)
+plotshape(sellSignal and strategy.position_size > 0, title = "Sell", style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0),   text = "SELL", textcolor = color.white, size = size.small)
+
+// Optional: color the background lightly by QQE state
+bgcolor(qqeGreen ? color.new(color.green, 92) : qqeRed ? color.new(color.red, 92) : na, title = "QQE State")
+
+// =============================================================================
+//  5) ALERTS
+// =============================================================================
+alertcondition(buySignal,  title = "Buy Signal",  message = "QQE+UMA BUY: QQE green above 0 and Ultimate MA green")
+alertcondition(sellSignal, title = "Sell Signal", message = "QQE+UMA SELL: QQE red below 0")
