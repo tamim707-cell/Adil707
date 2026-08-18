@@ -3,58 +3,38 @@
 //  QQE Mod + Ultimate Moving Average Strategy
 //  استراتيجية QQE Mod مع Ultimate Moving Average
 // -----------------------------------------------------------------------------
-//  Buy  (شراء)  : QQE Mod histogram turns GREEN and closes ABOVE the white 0 line
-//                 AND the Ultimate Moving Average turns GREEN
-//                 (optionally confirmed by a general uptrend filter).
-//  Sell (بيع)   : QQE Mod histogram turns RED and closes BELOW the white 0 line.
-//
-//  Profit Booster (سر تعزيز الأرباح):
-//    - Use Heikin Ashi candles (toggle "Use Heikin Ashi" below).
-//    - Trade the 1 hour (1h) timeframe exclusively.
+//  Buy  : QQE Mod histogram turns GREEN and closes ABOVE the white 0 line
+//         AND the Ultimate Moving Average turns GREEN
+//         (optionally confirmed by a general uptrend filter).
+//  Sell : QQE Mod histogram turns RED and closes BELOW the white 0 line.
+//  Booster: Heikin Ashi source toggle + trade the 1 hour (1h) timeframe.
 // =============================================================================
-strategy(title              = "QQE Mod + Ultimate MA Strategy",
-         shorttitle         = "QQE+UMA",
-         overlay            = true,
-         initial_capital    = 1000,
-         default_qty_type   = strategy.percent_of_equity,
-         default_qty_value  = 100,
-         commission_type    = strategy.commission.percent,
-         commission_value   = 0.04,
-         calc_on_every_tick = false,
-         process_orders_on_close = true)
+strategy("QQE Mod + Ultimate MA Strategy", shorttitle = "QQE+UMA", overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04, process_orders_on_close = true)
 
 // =============================================================================
 //  0) GENERAL SETTINGS
 // =============================================================================
-grpGen   = "General / عام"
-useHA     = input.bool(true,  "Use Heikin Ashi source (شموع هايكن آشي)", group = grpGen,
-     tooltip = "Compute all signals on Heikin Ashi values. Recommended by the strategy.")
-restrict1h = input.bool(false, "Restrict entries to 1H timeframe only", group = grpGen,
-     tooltip = "When enabled, new entries are only allowed while the chart timeframe is 1 hour.")
-useTrend  = input.bool(true,  "Require general uptrend for Buy (اتجاه صاعد)", group = grpGen)
-trendLen  = input.int(200, "Uptrend EMA length", minval = 1, group = grpGen)
+grpGen = "General"
+useHA      = input.bool(true,  "Use Heikin Ashi source", group = grpGen)
+restrict1h = input.bool(false, "Restrict entries to 1H timeframe only", group = grpGen)
+useTrend   = input.bool(true,  "Require general uptrend for Buy", group = grpGen)
+trendLen   = input.int(200, "Uptrend EMA length", minval = 1, group = grpGen)
 
-// --- Source selection: Heikin Ashi or regular candles ------------------------
+// Source selection: Heikin Ashi or regular candles
 haTicker = ticker.heikinashi(syminfo.tickerid)
-haOpen   = request.security(haTicker, timeframe.period, open,  barmerge.gaps_off, barmerge.lookahead_off)
-haHigh   = request.security(haTicker, timeframe.period, high,  barmerge.gaps_off, barmerge.lookahead_off)
-haLow    = request.security(haTicker, timeframe.period, low,   barmerge.gaps_off, barmerge.lookahead_off)
 haClose  = request.security(haTicker, timeframe.period, close, barmerge.gaps_off, barmerge.lookahead_off)
-
 srcClose = useHA ? haClose : close
 
 // =============================================================================
-//  1) QQE MOD  (based on the well-known Mihkel00 "QQE MOD" indicator)
+//  1) QQE MOD  (Mihkel00 "QQE MOD")
 // =============================================================================
 grpQQE = "QQE Mod"
-// --- First QQE ---
-rsiPeriod = input.int(6,  "RSI Length",        group = grpQQE)
-sf        = input.int(5,  "RSI Smoothing",     group = grpQQE)
-qqeFactor = input.float(3.0, "Fast QQE Factor", group = grpQQE)
-threshHold = input.int(3, "Thresh-hold",       group = grpQQE)
+rsiPeriod  = input.int(6, "RSI Length", group = grpQQE)
+sf         = input.int(5, "RSI Smoothing", group = grpQQE)
+qqeFactor  = input.float(3.0, "Fast QQE Factor", group = grpQQE)
+threshHold = input.int(3, "Thresh-hold", group = grpQQE)
 
 wildersPeriod = rsiPeriod * 2 - 1
-
 rsi   = ta.rsi(srcClose, rsiPeriod)
 rsiMa = ta.ema(rsi, sf)
 atrRsi   = math.abs(rsiMa[1] - rsiMa)
@@ -64,9 +44,8 @@ dar      = ta.ema(maAtrRsi, wildersPeriod) * qqeFactor
 var float longband  = 0.0
 var float shortband = 0.0
 var int   trend     = 0
-
 deltaFastAtrRsi = dar
-rsIndex     = rsiMa
+rsIndex      = rsiMa
 newshortband = rsIndex + deltaFastAtrRsi
 newlongband  = rsIndex - deltaFastAtrRsi
 longband  := rsIndex[1] > longband[1]  and rsIndex > longband[1]  ? math.max(longband[1], newlongband)  : newlongband
@@ -75,14 +54,12 @@ cross1 = ta.cross(longband[1], rsIndex)
 trend := ta.cross(rsIndex, shortband[1]) ? 1 : cross1 ? -1 : nz(trend[1], 1)
 fastAtrRsiTL = trend == 1 ? longband : shortband
 
-// --- Second QQE ---
-rsiPeriod2 = input.int(6,  "RSI Length 2",        group = grpQQE)
-sf2        = input.int(5,  "RSI Smoothing 2",     group = grpQQE)
-qqeFactor2 = input.float(1.61, "Fast QQE Factor 2", group = grpQQE)
-threshHold2 = input.int(3, "Thresh-hold 2",       group = grpQQE)
+rsiPeriod2  = input.int(6, "RSI Length 2", group = grpQQE)
+sf2         = input.int(5, "RSI Smoothing 2", group = grpQQE)
+qqeFactor2  = input.float(1.61, "Fast QQE Factor 2", group = grpQQE)
+threshHold2 = input.int(3, "Thresh-hold 2", group = grpQQE)
 
 wildersPeriod2 = rsiPeriod2 * 2 - 1
-
 rsi2   = ta.rsi(srcClose, rsiPeriod2)
 rsiMa2 = ta.ema(rsi2, sf2)
 atrRsi2   = math.abs(rsiMa2[1] - rsiMa2)
@@ -92,9 +69,8 @@ dar2      = ta.ema(maAtrRsi2, wildersPeriod2) * qqeFactor2
 var float longband2  = 0.0
 var float shortband2 = 0.0
 var int   trend2     = 0
-
 deltaFastAtrRsi2 = dar2
-rsIndex2     = rsiMa2
+rsIndex2      = rsiMa2
 newshortband2 = rsIndex2 + deltaFastAtrRsi2
 newlongband2  = rsIndex2 - deltaFastAtrRsi2
 longband2  := rsIndex2[1] > longband2[1]  and rsIndex2 > longband2[1]  ? math.max(longband2[1], newlongband2)  : newlongband2
@@ -103,7 +79,6 @@ cross2 = ta.cross(longband2[1], rsIndex2)
 trend2 := ta.cross(rsIndex2, shortband2[1]) ? 1 : cross2 ? -1 : nz(trend2[1], 1)
 fastAtrRsi2TL = trend2 == 1 ? longband2 : shortband2
 
-// --- Bollinger bands on the QQE line (the "channel") -------------------------
 bbLength = input.int(50, "Bollinger Length", minval = 1, group = grpQQE)
 bbMult   = input.float(0.35, "BB Multiplier", minval = 0.001, maxval = 5, step = 0.1, group = grpQQE)
 basis = ta.sma(fastAtrRsi2TL - 50, bbLength)
@@ -111,40 +86,29 @@ dev   = bbMult * ta.stdev(fastAtrRsi2TL - 50, bbLength)
 upper = basis + dev
 lower = basis - dev
 
-// --- The QQE Mod histogram (value plotted around the white 0 line) -----------
-qqeHist = rsiMa2 - 50
-
+qqeHist   = rsiMa2 - 50
 greenBar1 = rsiMa2 - 50 > threshHold2
 greenBar2 = rsiMa  - 50 > upper
 redBar1   = rsiMa2 - 50 < 0 - threshHold2
 redBar2   = rsiMa  - 50 < lower
-
-qqeGreen = greenBar1 and greenBar2          // histogram turned green
-qqeRed   = redBar1   and redBar2            // histogram turned red
-
-// QQE buy trigger: green AND above the white 0 baseline
-qqeBuy  = qqeGreen and qqeHist > 0
-// QQE sell trigger: red AND below the white 0 baseline
-qqeSell = qqeRed and qqeHist < 0
+qqeGreen  = greenBar1 and greenBar2
+qqeRed    = redBar1 and redBar2
+qqeBuy    = qqeGreen and qqeHist > 0
+qqeSell   = qqeRed and qqeHist < 0
 
 // =============================================================================
-//  2) ULTIMATE MOVING AVERAGE
-//     Faithful port of ChrisMoody's "CM_Ultimate_MA_MTF" (the "Ultimate Moving
-//     Average" indicator on TradingView): 8 selectable MA types, multi-timeframe
-//     option, and green/red coloring based on direction over a smoothing window.
+//  2) ULTIMATE MOVING AVERAGE (CM_Ultimate_MA_MTF, ChrisMoody)
 // =============================================================================
-grpUMA = "Ultimate Moving Average (CM_Ultimate_MA_MTF)"
+grpUMA = "Ultimate Moving Average"
 umaCurrentRes = input.bool(true, "Ultimate MA: use current chart resolution", group = grpUMA)
-umaResCustom  = input.timeframe("D", "Ultimate MA: custom timeframe (if unchecked)", group = grpUMA)
-umaLen   = input.int(20, "Ultimate MA Length (lookback)", minval = 1, group = grpUMA)
-umaType  = input.int(1, "1=SMA 2=EMA 3=WMA 4=HullMA 5=VWMA 6=RMA 7=TEMA 8=Tilson T3", minval = 1, maxval = 8, group = grpUMA)
-umaSmooth = input.int(2, "Color Smoothing (1 = no smoothing)", minval = 1, maxval = 10, group = grpUMA)
-umaCC    = input.bool(true, "Change color based on direction", group = grpUMA)
-t3Factor = input.float(7, "Tilson T3 Factor (7 = traditional 0.7)", minval = 0, maxval = 20, group = grpUMA) * 0.1
+umaResCustom  = input.timeframe("D", "Ultimate MA: custom timeframe", group = grpUMA)
+umaLen    = input.int(20, "Ultimate MA Length", minval = 1, group = grpUMA)
+umaType   = input.int(1, "Type: 1=SMA 2=EMA 3=WMA 4=Hull 5=VWMA 6=RMA 7=TEMA 8=T3", minval = 1, maxval = 8, group = grpUMA)
+umaSmooth = input.int(2, "Color Smoothing (1 = none)", minval = 1, maxval = 10, group = grpUMA)
+umaCC     = input.bool(true, "Change color based on direction", group = grpUMA)
+t3Factor  = input.float(0.7, "Tilson T3 Factor", minval = 0, maxval = 2, step = 0.1, group = grpUMA)
 
 umaSrc = srcClose
-
-// --- Building blocks for the 8 MA variants -----------------------------------
 hullma = ta.wma(2 * ta.wma(umaSrc, int(math.round(umaLen / 2))) - ta.wma(umaSrc, umaLen), int(math.round(math.sqrt(umaLen))))
 
 e1 = ta.ema(umaSrc, umaLen)
@@ -152,36 +116,34 @@ e2 = ta.ema(e1, umaLen)
 e3 = ta.ema(e2, umaLen)
 tema = 3 * (e1 - e2) + e3
 
-// Tilson T3
 xe1 = ta.ema(umaSrc, umaLen)
 xe2 = ta.ema(xe1, umaLen)
 xe3 = ta.ema(xe2, umaLen)
 xe4 = ta.ema(xe3, umaLen)
 xe5 = ta.ema(xe4, umaLen)
 xe6 = ta.ema(xe5, umaLen)
-tb = t3Factor
+tb  = t3Factor
 tc1 = -tb * tb * tb
 tc2 = 3 * tb * tb + 3 * tb * tb * tb
 tc3 = -6 * tb * tb - 3 * tb - 3 * tb * tb * tb
 tc4 = 1 + 3 * tb + tb * tb * tb + 3 * tb * tb
-t3 = tc1 * xe6 + tc2 * xe5 + tc3 * xe4 + tc4 * xe3
+t3  = tc1 * xe6 + tc2 * xe5 + tc3 * xe4 + tc4 * xe3
 
-umaVariant = umaType == 1 ? ta.sma(umaSrc, umaLen) :
-     umaType == 2 ? ta.ema(umaSrc, umaLen) :
-     umaType == 3 ? ta.wma(umaSrc, umaLen) :
-     umaType == 4 ? hullma :
-     umaType == 5 ? ta.vwma(umaSrc, umaLen) :
-     umaType == 6 ? ta.rma(umaSrc, umaLen) :
-     umaType == 7 ? tema :
-     t3
+umaVariant = switch umaType
+    1 => ta.sma(umaSrc, umaLen)
+    2 => ta.ema(umaSrc, umaLen)
+    3 => ta.wma(umaSrc, umaLen)
+    4 => hullma
+    5 => ta.vwma(umaSrc, umaLen)
+    6 => ta.rma(umaSrc, umaLen)
+    7 => tema
+    => t3
 
 uma = umaCurrentRes ? umaVariant : request.security(syminfo.tickerid, umaResCustom, umaVariant, barmerge.gaps_off, barmerge.lookahead_off)
-
-umaBull = uma > uma[umaSmooth]               // Ultimate MA is GREEN  (rising)
-umaBear = uma < uma[umaSmooth]               // Ultimate MA is RED    (falling)
+umaBull  = uma > uma[umaSmooth]
+umaBear  = uma < uma[umaSmooth]
 umaColor = not umaCC ? color.new(#0585ff, 0) : umaBull ? color.new(color.lime, 0) : umaBear ? color.new(color.red, 0) : color.new(color.yellow, 0)
 
-// General uptrend filter (price above a long EMA)
 trendEma = ta.ema(srcClose, trendLen)
 uptrend  = srcClose > trendEma
 
@@ -189,31 +151,26 @@ uptrend  = srcClose > trendEma
 //  3) STRATEGY LOGIC
 // =============================================================================
 tfOk = not restrict1h or timeframe.period == "60"
-
 buySignal  = qqeBuy and umaBull and (not useTrend or uptrend) and tfOk
 sellSignal = qqeSell
 
-// --- Risk management: Stop Loss / Take Profit --------------------------------
-grpRisk = "Risk / إدارة المخاطر"
-useSLTP  = input.bool(true, "Enable Stop Loss / Take Profit", group = grpRisk)
-slMode   = input.string("ATR", "Stop / Target mode", options = ["ATR", "Percent"], group = grpRisk)
-atrLen   = input.int(14, "ATR Length", minval = 1, group = grpRisk)
-slAtrMult = input.float(2.0, "Stop Loss = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
-tpAtrMult = input.float(4.0, "Take Profit = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
-slPerc   = input.float(2.0, "Stop Loss %",   minval = 0.1, step = 0.1, group = grpRisk)
-tpPerc   = input.float(4.0, "Take Profit %", minval = 0.1, step = 0.1, group = grpRisk)
+// Risk management
+grpRisk = "Risk"
+useSLTP     = input.bool(true, "Enable Stop Loss / Take Profit", group = grpRisk)
+slMode      = input.string("ATR", "Stop / Target mode", options = ["ATR", "Percent"], group = grpRisk)
+atrLen      = input.int(14, "ATR Length", minval = 1, group = grpRisk)
+slAtrMult   = input.float(2.0, "Stop Loss = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
+tpAtrMult   = input.float(4.0, "Take Profit = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
+slPerc      = input.float(2.0, "Stop Loss %", minval = 0.1, step = 0.1, group = grpRisk)
+tpPerc      = input.float(4.0, "Take Profit %", minval = 0.1, step = 0.1, group = grpRisk)
+useTrail    = input.bool(false, "Enable Trailing Stop", group = grpRisk)
+trailActAtr = input.float(1.0, "Trail activation = ATR x", minval = 0.0, step = 0.1, group = grpRisk)
+trailOffAtr = input.float(2.0, "Trail distance = ATR x", minval = 0.1, step = 0.1, group = grpRisk)
 
-// --- Trailing Stop -----------------------------------------------------------
-useTrail    = input.bool(false, "Enable Trailing Stop (وقف متحرك)", group = grpRisk)
-trailActAtr = input.float(1.0, "Trail activation = ATR x", minval = 0.0, step = 0.1, group = grpRisk,
-     tooltip = "Profit distance (in ATR multiples) before the trailing stop activates.")
-trailOffAtr = input.float(2.0, "Trail distance = ATR x", minval = 0.1, step = 0.1, group = grpRisk,
-     tooltip = "How far the trailing stop follows price, in ATR multiples.")
-
-// --- Webhook alert messages (JSON for automated trading) ---------------------
+// Webhook alert messages (JSON for automated trading)
 grpAlerts = "Alerts / Webhook"
-buyMsg  = input.text_area('{"action":"buy","symbol":"{{ticker}}","price":"{{close}}"}',  "Buy webhook message (JSON)",  group = grpAlerts)
-sellMsg = input.text_area('{"action":"sell","symbol":"{{ticker}}","price":"{{close}}"}', "Sell webhook message (JSON)", group = grpAlerts)
+buyMsg  = input.string('{"action":"buy","symbol":"{{ticker}}","price":"{{close}}"}',  "Buy webhook message (JSON)", group = grpAlerts)
+sellMsg = input.string('{"action":"sell","symbol":"{{ticker}}","price":"{{close}}"}', "Sell webhook message (JSON)", group = grpAlerts)
 
 atr = ta.atr(atrLen)
 trailActPrice = strategy.position_avg_price + atr * trailActAtr
@@ -223,7 +180,7 @@ trailOffTicks = math.max(1.0, atr * trailOffAtr / syminfo.mintick)
 if buySignal and strategy.position_size <= 0
     strategy.entry("Long", strategy.long, alert_message = buyMsg)
 
-// Stop Loss / Take Profit levels, computed from the average entry price
+// Stop Loss / Take Profit levels
 var float longSL = na
 var float longTP = na
 if strategy.position_size > 0
@@ -236,15 +193,9 @@ else
     longTP := na
 
 if strategy.position_size > 0 and (useSLTP or useTrail)
-    strategy.exit("Exit", from_entry = "Long",
-         stop        = useSLTP ? longSL : na,
-         limit       = useSLTP ? longTP : na,
-         trail_price = useTrail ? trailActPrice : na,
-         trail_offset = useTrail ? int(trailOffTicks) : na,
-         comment     = "SL/TP/Trail",
-         alert_message = sellMsg)
+    strategy.exit("Exit", from_entry = "Long", stop = useSLTP ? longSL : na, limit = useSLTP ? longTP : na, trail_price = useTrail ? trailActPrice : na, trail_offset = useTrail ? int(trailOffTicks) : na, comment = "SL/TP/Trail", alert_message = sellMsg)
 
-// QQE-based exit (signal exit) — closes the position regardless of SL/TP
+// QQE-based exit closes the position regardless of SL/TP
 if sellSignal and strategy.position_size > 0
     strategy.close("Long", comment = "QQE Sell", alert_message = sellMsg)
 
@@ -253,13 +204,11 @@ if sellSignal and strategy.position_size > 0
 // =============================================================================
 plot(uma, "Ultimate MA", color = umaColor, linewidth = 2)
 plot(useTrend ? trendEma : na, "Uptrend EMA", color = color.new(color.gray, 40), linewidth = 1)
-plot(useSLTP and strategy.position_size > 0 ? longSL : na, "Stop Loss",   color = color.new(color.red, 0),   style = plot.style_linebr, linewidth = 1)
+plot(useSLTP and strategy.position_size > 0 ? longSL : na, "Stop Loss", color = color.new(color.red, 0), style = plot.style_linebr, linewidth = 1)
 plot(useSLTP and strategy.position_size > 0 ? longTP : na, "Take Profit", color = color.new(color.green, 0), style = plot.style_linebr, linewidth = 1)
 
-plotshape(buySignal and strategy.position_size <= 0,  title = "Buy",  style = shape.labelup,   location = location.belowbar, color = color.new(color.green, 0), text = "BUY",  textcolor = color.white, size = size.small)
-plotshape(sellSignal and strategy.position_size > 0, title = "Sell", style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0),   text = "SELL", textcolor = color.white, size = size.small)
-
-// Optional: color the background lightly by QQE state
+plotshape(buySignal and strategy.position_size <= 0, title = "Buy", style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), text = "BUY", textcolor = color.white, size = size.small)
+plotshape(sellSignal and strategy.position_size > 0, title = "Sell", style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), text = "SELL", textcolor = color.white, size = size.small)
 bgcolor(qqeGreen ? color.new(color.green, 92) : qqeRed ? color.new(color.red, 92) : na, title = "QQE State")
 
 // =============================================================================
@@ -269,23 +218,23 @@ alertcondition(buySignal,  title = "Buy Signal",  message = "QQE+UMA BUY: QQE gr
 alertcondition(sellSignal, title = "Sell Signal", message = "QQE+UMA SELL: QQE red below 0")
 
 // =============================================================================
-//  6) DASHBOARD  (on-chart status + performance stats)
+//  6) DASHBOARD
 // =============================================================================
 grpDash = "Dashboard"
 showDash = input.bool(true, "Show dashboard", group = grpDash)
 dashPos  = input.string("Top Right", "Position", options = ["Top Right", "Top Left", "Bottom Right", "Bottom Left"], group = grpDash)
 
-f_tablePos(_p) =>
-    _p == "Top Right" ? position.top_right :
-     _p == "Top Left" ? position.top_left :
-     _p == "Bottom Right" ? position.bottom_right :
-     position.bottom_left
+tablePos = switch dashPos
+    "Top Right"    => position.top_right
+    "Top Left"     => position.top_left
+    "Bottom Right" => position.bottom_right
+    => position.bottom_left
 
 colUp   = color.new(color.green, 0)
 colDown = color.new(color.red, 0)
 colFlat = color.new(color.gray, 0)
 
-var table dash = table.new(f_tablePos(dashPos), 2, 8, border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
+var table dash = table.new(tablePos, 2, 8, border_width = 1, frame_color = color.new(color.gray, 50), frame_width = 1)
 
 if showDash and barstate.islast
     netP    = strategy.netprofit
@@ -293,27 +242,19 @@ if showDash and barstate.islast
     wins    = strategy.wintrades
     winRate = totTr > 0 ? wins / totTr * 100.0 : 0.0
     posTxt  = strategy.position_size > 0 ? "LONG" : "FLAT"
-
     table.cell(dash, 0, 0, "QQE + Ultimate MA", text_color = color.white, bgcolor = color.new(color.blue, 0), text_size = size.small)
-    table.cell(dash, 1, 0, timeframe.period + (useHA ? " • HA" : ""), text_color = color.white, bgcolor = color.new(color.blue, 0), text_size = size.small)
-
+    table.cell(dash, 1, 0, timeframe.period + (useHA ? " HA" : ""), text_color = color.white, bgcolor = color.new(color.blue, 0), text_size = size.small)
     table.cell(dash, 0, 1, "QQE Mod", text_color = color.white, text_size = size.small)
-    table.cell(dash, 1, 1, qqeGreen ? "GREEN ▲" : qqeRed ? "RED ▼" : "NEUTRAL", text_color = color.white, bgcolor = qqeGreen ? colUp : qqeRed ? colDown : colFlat, text_size = size.small)
-
+    table.cell(dash, 1, 1, qqeGreen ? "GREEN" : qqeRed ? "RED" : "NEUTRAL", text_color = color.white, bgcolor = qqeGreen ? colUp : qqeRed ? colDown : colFlat, text_size = size.small)
     table.cell(dash, 0, 2, "Ultimate MA", text_color = color.white, text_size = size.small)
-    table.cell(dash, 1, 2, umaBull ? "GREEN ▲" : umaBear ? "RED ▼" : "FLAT", text_color = color.white, bgcolor = umaBull ? colUp : umaBear ? colDown : colFlat, text_size = size.small)
-
-    table.cell(dash, 0, 3, "Trend (EMA " + str.tostring(trendLen) + ")", text_color = color.white, text_size = size.small)
-    table.cell(dash, 1, 3, uptrend ? "UP ▲" : "DOWN ▼", text_color = color.white, bgcolor = uptrend ? colUp : colDown, text_size = size.small)
-
+    table.cell(dash, 1, 2, umaBull ? "GREEN" : umaBear ? "RED" : "FLAT", text_color = color.white, bgcolor = umaBull ? colUp : umaBear ? colDown : colFlat, text_size = size.small)
+    table.cell(dash, 0, 3, "Trend EMA " + str.tostring(trendLen), text_color = color.white, text_size = size.small)
+    table.cell(dash, 1, 3, uptrend ? "UP" : "DOWN", text_color = color.white, bgcolor = uptrend ? colUp : colDown, text_size = size.small)
     table.cell(dash, 0, 4, "Position", text_color = color.white, text_size = size.small)
     table.cell(dash, 1, 4, posTxt, text_color = color.white, bgcolor = strategy.position_size > 0 ? colUp : colFlat, text_size = size.small)
-
     table.cell(dash, 0, 5, "Net Profit", text_color = color.white, text_size = size.small)
     table.cell(dash, 1, 5, str.tostring(netP, "#.##"), text_color = color.white, bgcolor = netP >= 0 ? colUp : colDown, text_size = size.small)
-
     table.cell(dash, 0, 6, "Win Rate", text_color = color.white, text_size = size.small)
     table.cell(dash, 1, 6, str.tostring(winRate, "#.#") + "%", text_color = color.white, bgcolor = color.new(color.gray, 20), text_size = size.small)
-
     table.cell(dash, 0, 7, "Trades", text_color = color.white, text_size = size.small)
     table.cell(dash, 1, 7, str.tostring(totTr), text_color = color.white, bgcolor = color.new(color.gray, 20), text_size = size.small)
