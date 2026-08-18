@@ -107,7 +107,7 @@ umaCC    = input.bool(true, "Change color based on direction", group = grpUMA)
 t3Factor = input.float(7, "Tilson T3 Factor (7 = traditional 0.7)", minval = 0, maxval = 20, group = grpUMA) * 0.1
 
 umaSrc = srcClose
-hullma = ta.wma(2 * ta.wma(umaSrc, math.round(umaLen / 2)) - ta.wma(umaSrc, umaLen), math.round(math.sqrt(umaLen)))
+hullma = ta.wma(2 * ta.wma(umaSrc, int(math.round(umaLen / 2))) - ta.wma(umaSrc, umaLen), int(math.round(math.sqrt(umaLen))))
 e1 = ta.ema(umaSrc, umaLen)
 e2 = ta.ema(e1, umaLen)
 e3 = ta.ema(e2, umaLen)

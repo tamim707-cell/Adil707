@@ -145,7 +145,7 @@ t3Factor = input.float(7, "Tilson T3 Factor (7 = traditional 0.7)", minval = 0, 
 umaSrc = srcClose
 
 // --- Building blocks for the 8 MA variants -----------------------------------
-hullma = ta.wma(2 * ta.wma(umaSrc, math.round(umaLen / 2)) - ta.wma(umaSrc, umaLen), math.round(math.sqrt(umaLen)))
+hullma = ta.wma(2 * ta.wma(umaSrc, int(math.round(umaLen / 2))) - ta.wma(umaSrc, umaLen), int(math.round(math.sqrt(umaLen))))
 
 e1 = ta.ema(umaSrc, umaLen)
 e2 = ta.ema(e1, umaLen)
@@ -240,7 +240,7 @@ if strategy.position_size > 0 and (useSLTP or useTrail)
          stop        = useSLTP ? longSL : na,
          limit       = useSLTP ? longTP : na,
          trail_price = useTrail ? trailActPrice : na,
-         trail_offset = useTrail ? trailOffTicks : na,
+         trail_offset = useTrail ? int(trailOffTicks) : na,
          comment     = "SL/TP/Trail",
          alert_message = sellMsg)
 
