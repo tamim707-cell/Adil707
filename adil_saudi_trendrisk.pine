@@ -15,30 +15,30 @@ strategy("Adil Saudi TrendRisk v1 | عادل تريند ريسك", overlay = tru
 
 // ---------- Inputs ----------
 string G_RISK = "1 | إدارة المخاطر ورأس المال"
-float riskPct = input.float(0.5, "مخاطرة الصفقة %", minval = 0.05, maxval = 1.0, group = G_RISK)
-float allocationPct = input.float(50, "أقصى تخصيص للصفقة %", minval = 1, maxval = 100, group = G_RISK)
-float dailyLossPct = input.float(1.0, "حد خسارة اليوم % — لهذا الشارت", minval = 0.1, maxval = 3, group = G_RISK)
-float dayGoal = input.float(200, "هدف صافي اليوم بالريال — للمراقبة اليومية", minval = 1, group = G_RISK)
-int maxEntriesDay = input.int(2, "أقصى عدد صفقات يومية لهذا الشارت", minval = 1, maxval = 5, group = G_RISK)
-float netRR = input.float(2.0, "الهدف / المخاطرة المقدرة بعد التكاليف", minval = 2, maxval = 5, group = G_RISK)
-bool useBreakEven = input.bool(true, "رفع الوقف للتعادل التقديري بعد إغلاق عند +1.5R سعري", group = G_RISK)
+float riskPct = input.float(0.5, "نسبة المخاطرة لكل صفقة %", minval = 0.05, maxval = 1.0, group = G_RISK)
+float allocationPct = input.float(50, "أقصى نسبة تخصيص لرأس المال للصفقة %", minval = 1, maxval = 100, group = G_RISK)
+float dailyLossPct = input.float(1.0, "حد الخسارة اليومي % — لهذا الشارت فقط", minval = 0.1, maxval = 3, group = G_RISK)
+float dayGoal = input.float(200, "هدف صافي الربح اليومي بالريال — للمتابعة فقط", minval = 1, group = G_RISK)
+int maxEntriesDay = input.int(2, "أقصى عدد صفقات في اليوم لهذا الشارت", minval = 1, maxval = 5, group = G_RISK)
+float netRR = input.float(2.0, "نسبة الهدف إلى المخاطرة بعد التكاليف", minval = 2, maxval = 5, group = G_RISK)
+bool useBreakEven = input.bool(true, "رفع الوقف إلى نقطة التعادل بعد إغلاق فوق +1.5R", group = G_RISK)
 float maxBarParticipation = input.float(1.0, "أقصى كمية كنسبة من حجم شمعة الإشارة %", minval = 0.1, maxval = 5, group = G_RISK)
 
 string G_COST = "2 | التكاليف — طابقها مع Properties"
-float feePct = input.float(0.18, "تكلفة كل جهة % — انتبه لعمولة الوسيط", minval = 0, maxval = 2, group = G_COST)
-int reserveSlipTicks = input.int(2, "انزلاق الوقف/السوق بوحدات syminfo.mintick", minval = 0, maxval = 50, group = G_COST)
+float feePct = input.float(0.18, "تكلفة كل جهة (شراء/بيع) % — طابقها مع عمولة وسيطك", minval = 0, maxval = 2, group = G_COST)
+int reserveSlipTicks = input.int(2, "احتياطي الانزلاق (وقف/سوق) بوحدات التك", minval = 0, maxval = 50, group = G_COST)
 
 string G_FILTER = "3 | فلاتر الإشارة"
-string tasiSymbol = input.symbol("TADAWUL:TASI", "رمز تاسي — فلتر إلزامي", group = G_FILTER)
-float minDailyTurnoverM = input.float(10, "أقل متوسط سيولة يومية تقديرية — مليون ريال", minval = 1, step = 1, group = G_FILTER)
-int breakoutLength = input.int(10, "شموع قمة الاختراق — تستبعد الحالية", minval = 3, maxval = 50, group = G_FILTER)
-float volumeMultiple = input.float(1.3, "الحجم / متوسط 20 شمعة سابقة", minval = 1, maxval = 3, group = G_FILTER)
+string tasiSymbol = input.symbol("TADAWUL:TASI", "رمز المؤشر العام تاسي — فلتر إلزامي", group = G_FILTER)
+float minDailyTurnoverM = input.float(10, "أدنى متوسط سيولة يومية — مليون ريال", minval = 1, step = 1, group = G_FILTER)
+int breakoutLength = input.int(10, "عدد شموع قمة الاختراق — تستبعد الشمعة الحالية", minval = 3, maxval = 50, group = G_FILTER)
+float volumeMultiple = input.float(1.3, "مضاعف الحجم مقابل متوسط 20 شمعة", minval = 1, maxval = 3, group = G_FILTER)
 float maxTargetATR = input.float(6, "أقصى بُعد للهدف بوحدات ATR", minval = 2, maxval = 15, group = G_FILTER)
-bool trendExitEnabled = input.bool(true, "خروج بعد إغلاقين تحت EMA20", group = G_FILTER)
+bool trendExitEnabled = input.bool(true, "الخروج بعد إغلاقين تحت EMA20", group = G_FILTER)
 
 string G_TEST = "4 | الاختبار والعرض"
-int fromTime = input.time(timestamp("29 Jun 2025 00:00 +0300"), "بداية الاختبار — لن تسبق فراغ السعر الحالي", group = G_TEST)
-int toTime = input.time(timestamp("31 Dec 2035 23:59 +0300"), "نهاية الاختبار", group = G_TEST)
+int fromTime = input.time(timestamp("29 Jun 2025 00:00 +0300"), "بداية فترة الاختبار — تبدأ من تفعيل قواعد التك", group = G_TEST)
+int toTime = input.time(timestamp("31 Dec 2035 23:59 +0300"), "نهاية فترة الاختبار", group = G_TEST)
 bool showPanel = input.bool(true, "عرض لوحة المعلومات", group = G_TEST)
 
 // ---------- Supported charts and automatic timeframes ----------
@@ -58,7 +58,7 @@ if barstate.isfirst
     if not chart.is_standard
         runtime.error("استخدم شموع OHLC عادية، لا تستخدم Heikin Ashi أو Renko.")
     if syminfo.currency != "SAR" or syminfo.type != "stock"
-        runtime.error("هذه النسخة للأسهم المسعرة بالريال السعودي.")
+        runtime.error("هذه النسخة للأسهم المسعّرة بالريال السعودي.")
     if toTime <= fromTime
         runtime.error("نهاية الاختبار يجب أن تكون بعد بدايته.")
 
@@ -185,7 +185,7 @@ if expiredNow or cancelForGate
     strategy.cancel("L")
     strategy.cancel("BRACKET")
     pending := false
-    alert("إلغاء أمر شراء غير منفذ | " + syminfo.ticker, alert.freq_once_per_bar_close)
+    alert("إلغاء أمر شراء غير منفّذ | " + syminfo.ticker, alert.freq_once_per_bar_close)
 
 // No recalculation on fills. Existing bracket is active intrabar.
 // Stop upgrades use confirmed CLOSE only and take effect on the next tick.
@@ -196,15 +196,15 @@ if havePosition and useBreakEven and not raisedToBE and close >= planEntry + 1.5
         liveStop := beStop
         raisedToBE := true
         beNow := true
-        alert("تحديث الوقف للتعادل التقديري | " + syminfo.ticker + " | وقف " + f_price(liveStop), alert.freq_once_per_bar_close)
+        alert("رفع الوقف إلى نقطة التعادل | " + syminfo.ticker + " | الوقف " + f_price(liveStop), alert.freq_once_per_bar_close)
 
 bool timedExit = havePosition and not na(entryBar) and bar_index - entryBar >= maxHoldingBars - 1
 bool trendExit = havePosition and trendExitEnabled and close < ema20 and close[1] < ema20[1]
 bool forceExit = havePosition and (dailyLossHit or flattenSession or not inTest or timedExit or trendExit)
 if havePosition
-    strategy.exit("BRACKET", "L", stop = liveStop, limit = planTarget, comment_loss = "وقف", comment_profit = "هدف", alert_message = "خروج اضطراري: وقف أو هدف")
+    strategy.exit("BRACKET", "L", stop = liveStop, limit = planTarget, comment_loss = "وقف", comment_profit = "هدف", alert_message = "خروج بأمر مبرمج: وقف أو هدف")
 if forceExit
-    string why = dailyLossHit ? "حد خسارة اليوم" : flattenSession ? "نهاية المضاربة اليومية" : not inTest ? "نهاية الاختبار" : timedExit ? "خروج زمني" : "ضعف الاتجاه"
+    string why = dailyLossHit ? "بلوغ حد الخسارة اليومي" : flattenSession ? "نهاية جلسة المضاربة" : not inTest ? "خارج فترة الاختبار" : timedExit ? "خروج زمني" : "ضعف الاتجاه"
     strategy.close("L", comment = why, alert_message = "خروج اضطراري: " + why)
     alert("طلب خروج | " + syminfo.ticker + " | " + why, alert.freq_once_per_bar_close)
 
@@ -225,9 +225,9 @@ if submitSignal
     raisedToBE := false
     submittedBar := bar_index
     pending := true
-    strategy.entry("L", strategy.long, qty = planQty, limit = planEntry, alert_message = "شراء اختراق بأمر محدود")
-    strategy.exit("BRACKET", "L", stop = liveStop, limit = planTarget, comment_loss = "وقف", comment_profit = "هدف", alert_message = "خروج اختياري: وقف أو هدف")
-    alert("شراء مؤكد | " + syminfo.ticker + " | كمية " + str.tostring(planQty, "#") + " | حد شراء " + f_price(planEntry) + " | وقف " + f_price(liveStop) + " | هدف " + f_price(planTarget) + " | صالح للشمعة التالية فقط", alert.freq_once_per_bar_close)
+    strategy.entry("L", strategy.long, qty = planQty, limit = planEntry, alert_message = "شراء اختراق بأمر محدّد")
+    strategy.exit("BRACKET", "L", stop = liveStop, limit = planTarget, comment_loss = "وقف", comment_profit = "هدف", alert_message = "خروج بأمر مبرمج: وقف أو هدف")
+    alert("شراء مؤكّد | " + syminfo.ticker + " | كمية " + str.tostring(planQty, "#") + " | حد الشراء " + f_price(planEntry) + " | الوقف " + f_price(liveStop) + " | الهدف " + f_price(planTarget) + " | صالح للشمعة التالية فقط", alert.freq_once_per_bar_close)
 
 // ---------- Display ----------
 bool showLevels = pending or havePosition
@@ -237,22 +237,22 @@ plot(dayMode ? vwap : na, "VWAP يومي — 5 و15 دقيقة", color = color.p
 plot(showLevels ? planEntry : na, "حد الدخول", color = color.blue, linewidth = 2, style = plot.style_linebr)
 plot(showLevels ? liveStop : na, "وقف الخسارة", color = color.red, linewidth = 2, style = plot.style_linebr)
 plot(showLevels ? planTarget : na, "الهدف", color = color.lime, linewidth = 2, style = plot.style_linebr)
-plotshape(submitSignal, title = "إشارة شراء مؤكدة", style = shape.labelup, location = location.belowbar, color = color.green, text = "شراء", textcolor = color.white, size = size.small)
-plotshape(closedNow, title = "خروج اضطراري", style = shape.labeldown, location = location.abovebar, color = color.red, text = "بيع", textcolor = color.white, size = size.small)
-plotshape(beNow, title = "رفع الوقف", style = shape.circle, location = location.belowbar, color = color.aqua, size = size.tiny)
-plotshape(expiredNow or cancelForGate, title = "إلغاء دخول معلق", style = shape.xcross, location = location.belowbar, color = color.gray, size = size.tiny)
-bgcolor(dayLocked ? color.new(color.red, 93) : na, title = "توقف صفقات اليوم لهذا الشارت")
+plotshape(submitSignal, title = "إشارة شراء مؤكّدة", style = shape.labelup, location = location.belowbar, color = color.green, text = "شراء", textcolor = color.white, size = size.small)
+plotshape(closedNow, title = "خروج", style = shape.labeldown, location = location.abovebar, color = color.red, text = "بيع", textcolor = color.white, size = size.small)
+plotshape(beNow, title = "رفع الوقف للتعادل", style = shape.circle, location = location.belowbar, color = color.aqua, size = size.tiny)
+plotshape(expiredNow or cancelForGate, title = "إلغاء أمر معلّق", style = shape.xcross, location = location.belowbar, color = color.gray, size = size.tiny)
+bgcolor(dayLocked ? color.new(color.red, 93) : na, title = "توقّف صفقات اليوم لهذا الشارت")
 
 var table panel = table.new(position.top_right, 2, 13, border_width = 1)
 if barstate.islast and showPanel
-    string state = havePosition ? "صفقة استثمارية مفتوحة" : pending ? "أمر معلق — شمعة واحدة" : dayLocked ? "توقف يومي" : not inTest ? "خارج نطاق الاختبار" : not ready ? "بيانات ناقصة" : not marketOK ? "تاسي لا يؤكد الاتجاه" : not liquidityOK ? "سيولة أقل من الحد" : not entryWindow ? "خارج وقت الدخول" : not cooldownOK ? "انتظار بعد الخروج" : entriesToday >= maxEntriesDay ? "اكتمل عدد الصفقات" : not setup ? "انتظار فروق الدخول" : not riskOK ? "الوقف/الكمية غير مناسب" : "انتظار"
+    string state = havePosition ? "صفقة مفتوحة" : pending ? "أمر معلّق — صالح لشمعة واحدة" : dayLocked ? "توقّف يومي — تجاوز حد الخسارة" : not inTest ? "خارج فترة الاختبار" : not ready ? "بيانات غير مكتملة" : not marketOK ? "تاسي لا يؤكّد الاتجاه" : not liquidityOK ? "السيولة أقل من الحد" : not entryWindow ? "خارج وقت الدخول" : not cooldownOK ? "فترة تهدئة بعد الخروج" : entriesToday >= maxEntriesDay ? "اكتمل عدد صفقات اليوم" : not setup ? "بانتظار شروط الدخول" : not riskOK ? "الوقف أو الكمية غير مناسبين" : "بانتظار"
     table.cell(panel, 0, 0, "Adil TrendRisk v1", bgcolor = color.navy, text_color = color.white)
     table.cell(panel, 1, 0, "محاكاة — SAR", bgcolor = color.navy, text_color = color.white)
     table.cell(panel, 0, 1, "الإطار / التأكيد", text_color = chart.fg_color)
     table.cell(panel, 1, 1, timeframe.period + " / " + higherTF, text_color = chart.fg_color)
     table.cell(panel, 0, 2, "الحالة", text_color = chart.fg_color)
     table.cell(panel, 1, 2, state, text_color = chart.fg_color)
-    table.cell(panel, 0, 3, "أعلى سعر دخول", text_color = chart.fg_color)
+    table.cell(panel, 0, 3, "حد الدخول الأعلى", text_color = chart.fg_color)
     table.cell(panel, 1, 3, showLevels ? f_price(planEntry) : "—", text_color = color.blue)
     table.cell(panel, 0, 4, "الوقف الحالي", text_color = chart.fg_color)
     table.cell(panel, 1, 4, showLevels ? f_price(liveStop) : "—", text_color = color.red)
@@ -260,13 +260,13 @@ if barstate.islast and showPanel
     table.cell(panel, 1, 5, showLevels ? f_price(planTarget) : "—", text_color = color.green)
     table.cell(panel, 0, 6, "الكمية", text_color = chart.fg_color)
     table.cell(panel, 1, 6, showLevels ? str.tostring(planQty, "#") : "—", text_color = chart.fg_color)
-    table.cell(panel, 0, 7, "خسارة أولية مقدرة SAR", text_color = chart.fg_color)
+    table.cell(panel, 0, 7, "الخسارة الأولية المقدّرة SAR", text_color = chart.fg_color)
     table.cell(panel, 1, 7, showLevels ? f_money(planRisk) : "—", text_color = color.red)
-    table.cell(panel, 0, 8, "صافي متوقع عند الهدف SAR", text_color = chart.fg_color)
+    table.cell(panel, 0, 8, "صافي الربح المتوقّع عند الهدف SAR", text_color = chart.fg_color)
     table.cell(panel, 1, 8, showLevels ? f_money(planReward) : "—", text_color = color.green)
-    table.cell(panel, 0, 9, "صافي اليوم المحقق استثمارياً", text_color = chart.fg_color)
+    table.cell(panel, 0, 9, "صافي اليوم المحقّق SAR", text_color = chart.fg_color)
     table.cell(panel, 1, 9, f_money(dayRealized), text_color = dayRealized >= 0 ? color.green : color.red)
-    table.cell(panel, 0, 10, "حد خسارة اليوم SAR", text_color = chart.fg_color)
+    table.cell(panel, 0, 10, "حد الخسارة اليومي SAR", text_color = chart.fg_color)
     table.cell(panel, 1, 10, f_money(dayLossBudget), text_color = chart.fg_color)
     table.cell(panel, 0, 11, "صفقات اليوم / هدف اليوم", text_color = chart.fg_color)
     table.cell(panel, 1, 11, str.tostring(entriesToday) + " / " + (dayMode ? f_money(dayGoal) : "هدف مفتوح"), text_color = chart.fg_color)
